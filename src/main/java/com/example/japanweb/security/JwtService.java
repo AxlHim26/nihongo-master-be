@@ -2,6 +2,7 @@ package com.example.japanweb.security;
 
 import com.example.japanweb.config.properties.JwtProperties;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
@@ -22,6 +23,8 @@ import java.util.function.Function;
 @Service
 @RequiredArgsConstructor
 public class JwtService {
+
+    private static final String CLAIM_TOKEN_TYPE = "token_type";
 
     private final JwtProperties jwtProperties;
     private SecretKey signInKey;
@@ -44,8 +47,16 @@ public class JwtService {
         return generateToken(new HashMap<>(), userDetails);
     }
 
+    public String generateAccessToken(UserDetails userDetails, String tokenId) {
+        return generateToken(new HashMap<>(), userDetails, jwtProperties.getAccessTokenExpiration(), tokenId, TokenType.ACCESS);
+    }
+
     public String generateRefreshToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails, jwtProperties.getRefreshTokenExpiration());
+        return generateToken(new HashMap<>(), userDetails, jwtProperties.getRefreshTokenExpiration(), null, TokenType.REFRESH);
+    }
+
+    public String generateRefreshToken(UserDetails userDetails, String tokenId) {
+        return generateToken(new HashMap<>(), userDetails, jwtProperties.getRefreshTokenExpiration(), tokenId, TokenType.REFRESH);
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
@@ -57,11 +68,23 @@ public class JwtService {
             UserDetails userDetails,
             Duration expiration
     ) {
+        return generateToken(extraClaims, userDetails, expiration, null, TokenType.ACCESS);
+    }
+
+    private String generateToken(
+            Map<String, Object> extraClaims,
+            UserDetails userDetails,
+            Duration expiration,
+            String tokenId,
+            TokenType tokenType
+    ) {
         return Jwts.builder()
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expiration.toMillis()))
+                .setId(tokenId)
+                .claim(CLAIM_TOKEN_TYPE, tokenType.name())
                 .signWith(signInKey, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -79,6 +102,26 @@ public class JwtService {
         return extractClaim(token, Claims::getExpiration);
     }
 
+    public String extractTokenId(String token) {
+        return extractClaim(token, Claims::getId);
+    }
+
+    public boolean isAccessToken(String token) {
+        return extractTokenType(token) == TokenType.ACCESS;
+    }
+
+    public boolean isRefreshToken(String token) {
+        return extractTokenType(token) == TokenType.REFRESH;
+    }
+
+    public Duration getAccessTokenExpiration() {
+        return jwtProperties.getAccessTokenExpiration();
+    }
+
+    public Duration getRefreshTokenExpiration() {
+        return jwtProperties.getRefreshTokenExpiration();
+    }
+
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(signInKey)
@@ -87,11 +130,28 @@ public class JwtService {
                 .getBody();
     }
 
+    private TokenType extractTokenType(String token) {
+        String rawType = extractClaim(token, claims -> claims.get(CLAIM_TOKEN_TYPE, String.class));
+        if (rawType == null) {
+            throw new JwtException("Token type is missing");
+        }
+        try {
+            return TokenType.valueOf(rawType);
+        } catch (IllegalArgumentException ex) {
+            throw new JwtException("Token type is invalid", ex);
+        }
+    }
+
     private byte[] resolveSigningKeyBytes(String rawSecret) {
         try {
             return Decoders.BASE64.decode(rawSecret);
         } catch (IllegalArgumentException ex) {
             return rawSecret.getBytes(StandardCharsets.UTF_8);
         }
+    }
+
+    private enum TokenType {
+        ACCESS,
+        REFRESH
     }
 }

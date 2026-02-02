@@ -42,6 +42,9 @@ public class VocabEntry {
     @Column(length = 10)
     private String level;
 
+    @Column(name = "random_key", nullable = false, insertable = false, updatable = false)
+    private Double randomKey;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
