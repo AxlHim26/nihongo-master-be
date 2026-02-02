@@ -1,5 +1,6 @@
 package com.example.japanweb.service;
 
+import com.example.japanweb.config.properties.GoogleDriveProperties;
 import com.example.japanweb.exception.ApiException;
 import com.example.japanweb.exception.ErrorCode;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -11,10 +12,12 @@ import com.google.api.services.drive.model.File;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,13 +30,11 @@ import java.util.Collections;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class GoogleDriveService {
 
-    @Value("${google.drive.application-name:Japience}")
-    private String applicationName;
-
-    @Value("${google.drive.credentials-path:#{null}}")
-    private Resource credentialsResource;
+    private final GoogleDriveProperties googleDriveProperties;
+    private final ResourceLoader resourceLoader;
 
     private Drive driveService;
 
@@ -47,7 +48,7 @@ public class GoogleDriveService {
                     GoogleNetHttpTransport.newTrustedTransport(),
                     GsonFactory.getDefaultInstance(),
                     requestInitializer)
-                    .setApplicationName(applicationName)
+                    .setApplicationName(googleDriveProperties.getApplicationName())
                     .build();
 
             log.info("Google Drive service initialized successfully");
@@ -59,6 +60,7 @@ public class GoogleDriveService {
 
     private GoogleCredentials loadCredentials() throws IOException {
         GoogleCredentials credentials;
+        Resource credentialsResource = resolveCredentialsResource();
 
         if (credentialsResource != null && credentialsResource.exists()) {
             // Load from specified credentials file
@@ -75,6 +77,19 @@ public class GoogleDriveService {
         }
 
         return credentials;
+    }
+
+    private Resource resolveCredentialsResource() {
+        String credentialsPath = googleDriveProperties.getCredentialsPath();
+        if (!StringUtils.hasText(credentialsPath)) {
+            return null;
+        }
+
+        if (credentialsPath.startsWith("classpath:") || credentialsPath.startsWith("file:")) {
+            return resourceLoader.getResource(credentialsPath);
+        }
+
+        return resourceLoader.getResource("file:" + credentialsPath);
     }
 
     /**

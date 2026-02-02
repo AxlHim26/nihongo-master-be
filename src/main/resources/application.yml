@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: japience
+  profiles:
+    default: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  security:
+    jwt:
+      access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:24h}
+      refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:7d}
+    cors:
+      allowed-methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      allowed-headers:
+        - "*"
+      exposed-headers:
+        - Authorization
+      allow-credentials: true
+      max-age: 3600
+  integrations:
+    google-drive:
+      application-name: ${GOOGLE_DRIVE_APPLICATION_NAME:Japience}
+      credentials-path: ${GOOGLE_APPLICATION_CREDENTIALS:}
