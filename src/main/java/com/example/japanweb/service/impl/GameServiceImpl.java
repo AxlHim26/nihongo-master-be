@@ -112,7 +112,8 @@ public class GameServiceImpl implements GameService {
             throw new ApiException(ErrorCode.GAME_INVALID_QUESTION);
         }
 
-        boolean isCorrect = correctAnswer.equalsIgnoreCase(answer.trim());
+        String normalizedAnswer = answer == null ? "" : answer.trim();
+        boolean isCorrect = correctAnswer.equalsIgnoreCase(normalizedAnswer);
         int currentHP = session.getCurrentHP();
         int score = session.getScore();
         int questionsAnswered = session.getQuestionsAnswered() + 1;
@@ -125,7 +126,6 @@ public class GameServiceImpl implements GameService {
 
             // Update SRS progress for the user
             try {
-                srsService.getOrCreateProgress(userId, questionId);
                 var progress = srsService.getOrCreateProgress(userId, questionId);
                 srsService.processReview(progress, SrsService.Rating.GOOD);
                 log.debug("Updated SRS progress for user {} vocab {}", userId, questionId);

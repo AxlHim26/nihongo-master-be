@@ -45,7 +45,7 @@ public class VocabServiceImpl implements VocabService {
     @Override
     @Transactional(readOnly = true)
     public VocabCourseDetailDTO getCourseWithEntries(Long courseId) {
-        VocabCourse course = vocabCourseRepository.findById(courseId)
+        VocabCourse course = vocabCourseRepository.findWithEntriesById(courseId)
                 .orElseThrow(() -> new ApiException(ErrorCode.VOCAB_COURSE_NOT_FOUND));
 
         List<VocabEntryDTO> entries = course.getEntries().stream()
