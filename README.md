@@ -208,6 +208,10 @@ app:
 | `DB_POOL_MAX_SIZE` | Hikari max connections | Optional (`dev`: 10, `prod`: 25) |
 | `DB_POOL_MIN_IDLE` | Hikari min idle connections | Optional (`dev`: 2, `prod`: 5) |
 | `DB_POOL_CONNECTION_TIMEOUT_MS` | DB connection timeout (ms) | Optional (default: `20000`) |
+| `SQL_OBSERVABILITY_ENABLED` | Enable SQL query instrumentation | Optional (default: `true`) |
+| `SQL_SLOW_QUERY_THRESHOLD_MS` | Slow SQL threshold in milliseconds | Optional (`dev`: `120`, `prod`: `350`) |
+| `SQL_SLOW_QUERY_LOG_ENABLED` | Enable slow query log output | Optional (default: `true`) |
+| `SQL_SLOW_QUERY_MAX_SQL_LENGTH` | Max SQL length in slow query logs | Optional (default: `800`) |
 | `REDIS_HOST` | Redis host | Prod |
 | `REDIS_PORT` | Redis port | Optional (default: `6379`) |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to Google Service Account JSON | For video streaming |
@@ -269,6 +273,20 @@ curl -X GET "http://localhost:8080/api/v1/vocab/review?limit=10" \
 | `/api/v1/game/start` | POST | Start speed review game | ✅ |
 | `/api/v1/game/answer` | POST | Submit game answer | ✅ |
 | `/api/v1/videos/{id}/stream` | GET | Stream video content | ✅ |
+| `/actuator/metrics/app.db.query.execution` | GET | SQL query latency metrics | ❌ |
+| `/actuator/prometheus` | GET | Prometheus scrape endpoint | ❌ |
+
+### Observability additions
+
+- SQL metrics are exported via Micrometer:
+  - `app.db.query.execution` (timer, tags: `operation`, `success`, `batch`)
+  - `app.db.query.batch.size` (distribution summary)
+  - `app.db.query.slow.count` (counter)
+- Slow queries are logged when execution time exceeds `SQL_SLOW_QUERY_THRESHOLD_MS`.
+- Game random vocab selection uses an indexed `random_key` strategy to avoid expensive `ORDER BY RANDOM()`.
+- Quick check:
+  - `curl http://localhost:8080/actuator/metrics/app.db.query.execution`
+  - `curl http://localhost:8080/actuator/prometheus | grep app_db_query_execution`
 
 > All responses follow a standard format:  
 > `{ "status": 200, "message": "...", "data": {...}, "path": "...", "timestamp": "..." }`  

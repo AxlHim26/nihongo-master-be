@@ -27,7 +27,13 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: WARN
 
 app:
+  observability:
+    sql:
+      slow-query-threshold-ms: ${SQL_SLOW_QUERY_THRESHOLD_MS:350}
   security:
+    auth-cookie:
+      secure: ${AUTH_COOKIE_SECURE:true}
+      same-site: ${AUTH_COOKIE_SAME_SITE:None}
     jwt:
       secret-key: ${JWT_SECRET_KEY}
     cors:

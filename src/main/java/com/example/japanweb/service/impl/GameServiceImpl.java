@@ -12,11 +12,13 @@ import com.example.japanweb.service.GameService;
 import com.example.japanweb.service.SrsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 /**
@@ -39,9 +41,8 @@ public class GameServiceImpl implements GameService {
 
     @Override
     public GameStartResponseDTO startGame(Long courseId, Long userId) {
-        // 1. Fetch random words from the course
-        List<VocabEntry> randomEntries = vocabEntryRepository
-                .findRandomEntriesByCourseId(courseId, QUESTION_COUNT);
+        // 1. Fetch random words using indexed random-key scan (no ORDER BY RANDOM()).
+        List<VocabEntry> randomEntries = fetchRandomEntries(courseId, QUESTION_COUNT);
 
         if (randomEntries.isEmpty()) {
             throw new ApiException(ErrorCode.GAME_INSUFFICIENT_WORDS,
@@ -90,6 +91,29 @@ public class GameServiceImpl implements GameService {
                 .totalQuestions(questions.size())
                 .initialHP(INITIAL_HP)
                 .build();
+    }
+
+    private List<VocabEntry> fetchRandomEntries(Long courseId, int limit) {
+        double seed = ThreadLocalRandom.current().nextDouble();
+        PageRequest page = PageRequest.of(0, limit);
+
+        List<VocabEntry> entries = new ArrayList<>(
+                vocabEntryRepository.findRandomBatchFromSeed(courseId, seed, page)
+        );
+
+        int remaining = limit - entries.size();
+        if (remaining > 0) {
+            entries.addAll(
+                    vocabEntryRepository.findRandomBatchWrapFromSeed(
+                            courseId,
+                            seed,
+                            PageRequest.of(0, remaining)
+                    )
+            );
+        }
+
+        Collections.shuffle(entries);
+        return entries;
     }
 
     @Override

@@ -19,12 +19,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * Admin-only APIs for managing Course -> Chapter -> Section -> Lesson tree.
+ * Course APIs for Course -> Chapter -> Section -> Lesson tree.
  */
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
 public class CourseStructureController {
 
     private final CourseStructureService courseStructureService;
@@ -40,16 +39,19 @@ public class CourseStructureController {
     }
 
     @PostMapping("/courses")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<CourseDTO> createCourse(@Valid @RequestBody CourseRequest request) {
         return ApiResponse.created(courseStructureService.createCourse(request));
     }
 
     @PutMapping("/courses/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<CourseDTO> updateCourse(@PathVariable Long id, @Valid @RequestBody CourseRequest request) {
         return ApiResponse.success(courseStructureService.updateCourse(id, request));
     }
 
     @DeleteMapping("/courses/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteCourse(@PathVariable Long id) {
         courseStructureService.deleteCourse(id);
         return ApiResponse.success(null, "Course deleted successfully");
@@ -61,16 +63,19 @@ public class CourseStructureController {
     }
 
     @PostMapping("/courses/{id}/chapters")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<CourseChapterDTO> createChapter(@PathVariable Long id, @Valid @RequestBody ChapterRequest request) {
         return ApiResponse.created(courseStructureService.createChapter(id, request));
     }
 
     @PutMapping("/chapters/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<CourseChapterDTO> updateChapter(@PathVariable Long id, @Valid @RequestBody ChapterRequest request) {
         return ApiResponse.success(courseStructureService.updateChapter(id, request));
     }
 
     @DeleteMapping("/chapters/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteChapter(@PathVariable Long id) {
         courseStructureService.deleteChapter(id);
         return ApiResponse.success(null, "Chapter deleted successfully");
@@ -83,16 +88,19 @@ public class CourseStructureController {
     }
 
     @PostMapping("/chapters/{id}/sections")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<CourseSectionDTO> createSection(@PathVariable Long id, @Valid @RequestBody SectionRequest request) {
         return ApiResponse.created(courseStructureService.createSection(id, request));
     }
 
     @PutMapping("/sections/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<CourseSectionDTO> updateSection(@PathVariable Long id, @Valid @RequestBody SectionRequest request) {
         return ApiResponse.success(courseStructureService.updateSection(id, request));
     }
 
     @DeleteMapping("/sections/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteSection(@PathVariable Long id) {
         courseStructureService.deleteSection(id);
         return ApiResponse.success(null, "Section deleted successfully");
@@ -104,16 +112,19 @@ public class CourseStructureController {
     }
 
     @PostMapping("/sections/{id}/lessons")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<CourseLessonDTO> createLesson(@PathVariable Long id, @Valid @RequestBody LessonRequest request) {
         return ApiResponse.created(courseStructureService.createLesson(id, request));
     }
 
     @PutMapping("/lessons/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<CourseLessonDTO> updateLesson(@PathVariable Long id, @Valid @RequestBody LessonRequest request) {
         return ApiResponse.success(courseStructureService.updateLesson(id, request));
     }
 
     @DeleteMapping("/lessons/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteLesson(@PathVariable Long id) {
         courseStructureService.deleteLesson(id);
         return ApiResponse.success(null, "Lesson deleted successfully");

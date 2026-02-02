@@ -445,7 +445,7 @@ public class CourseStructureServiceImpl implements CourseStructureService {
                 .thumbnailUrl(course.getThumbnailUrl())
                 .createdAt(course.getCreatedAt())
                 .updatedAt(course.getUpdatedAt())
-                .chapters(chapters)
+                .chapters(new ArrayList<>(chapters))
                 .build();
     }
 
@@ -456,7 +456,7 @@ public class CourseStructureServiceImpl implements CourseStructureService {
                 .title(chapter.getTitle())
                 .description(chapter.getDescription())
                 .chapterOrder(chapter.getChapterOrder())
-                .sections(sections)
+                .sections(new ArrayList<>(sections))
                 .build();
     }
 
@@ -470,7 +470,7 @@ public class CourseStructureServiceImpl implements CourseStructureService {
                 .topic(section.getTopic())
                 .status(section.getStatus())
                 .sectionOrder(section.getSectionOrder())
-                .lessons(lessons)
+                .lessons(new ArrayList<>(lessons))
                 .build();
     }
 

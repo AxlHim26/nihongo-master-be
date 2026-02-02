@@ -27,11 +27,42 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - metrics
+          - prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        app.db.query.execution: true
+
 app:
   security:
     jwt:
       access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:24h}
       refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:7d}
+    auth-cookie:
+      refresh-token-name: ${AUTH_REFRESH_COOKIE_NAME:nm_refresh_token}
+      path: ${AUTH_COOKIE_PATH:/api/v1/auth}
+      domain: ${AUTH_COOKIE_DOMAIN:}
+      http-only: true
+      secure: ${AUTH_COOKIE_SECURE:false}
+      same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
     cors:
       allowed-methods:
         - GET
@@ -50,3 +81,9 @@ app:
     google-drive:
       application-name: ${GOOGLE_DRIVE_APPLICATION_NAME:Japience}
       credentials-path: ${GOOGLE_APPLICATION_CREDENTIALS:}
+  observability:
+    sql:
+      enabled: ${SQL_OBSERVABILITY_ENABLED:true}
+      slow-query-log-enabled: ${SQL_SLOW_QUERY_LOG_ENABLED:true}
+      slow-query-threshold-ms: ${SQL_SLOW_QUERY_THRESHOLD_MS:300}
+      max-sql-length: ${SQL_SLOW_QUERY_MAX_SQL_LENGTH:800}
