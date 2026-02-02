@@ -113,9 +113,8 @@ This project is ideal for developers building Japanese learning apps or students
 
 ### Prerequisites
 
-- Java 21+ installed
-- Docker & Docker Compose (for database and Redis)
-- Maven (or use included wrapper)
+- Docker Engine + Docker Compose (deploy)
+- Java 21+ and Maven (only for local run without Docker)
 
 ### 1. Clone the Repository
 
@@ -124,58 +123,96 @@ git clone https://github.com/yourusername/japience.git
 cd japience
 ```
 
-### 2. Start Database & Redis
+### 2. Deploy with Docker (recommended)
 
 ```bash
-docker-compose up -d
+cp .env.example .env
+# update secrets in .env before running
+docker compose up -d --build
 ```
 
 This starts:
-- PostgreSQL on port `5432`
-- Redis on port `6379`
+- `app` (Spring Boot API) on `http://localhost:${APP_PORT:-8080}`
+- `db` (PostgreSQL 16)
+- `redis` (Redis 7)
 
-### 3. Run the Application
+### 3. Check health/logs
 
 ```bash
-./mvnw spring-boot:run
+docker compose ps
+docker compose logs -f app
 ```
-
-The API will be available at: `http://localhost:8080`
 
 ### 4. Access Swagger UI
 
 Open in browser: `http://localhost:8080/swagger-ui.html`
 
+### 5. Local run (without Docker app container)
+
+```bash
+docker compose up -d db redis
+./mvnw spring-boot:run
+```
+
 ---
 
 ## ⚙️ Environment Configuration
 
-### application.properties
+### Profile-based config
 
-```properties
-# PostgreSQL
-spring.datasource.url=jdbc:postgresql://localhost:5432/elearning_db
-spring.datasource.username=admin
-spring.datasource.password=password
+```yaml
+src/main/resources/
+  application.yml       # shared defaults
+  application-dev.yml   # local development
+  application-prod.yml  # production
+```
 
-# Redis
-spring.data.redis.host=localhost
-spring.data.redis.port=6379
+```yaml
+# application.yml (shared)
+app:
+  security:
+    jwt:
+      access-token-expiration: 24h
+      refresh-token-expiration: 7d
+  integrations:
+    google-drive:
+      credentials-path: ${GOOGLE_APPLICATION_CREDENTIALS:}
 
-# JWT (change in production!)
-jwt.secret-key=your-256-bit-secret-key-here
-jwt.expiration=86400000
-
-# Google Drive (optional)
-google.drive.credentials-path=${GOOGLE_APPLICATION_CREDENTIALS:}
+# application-dev.yml (example defaults)
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/elearning_db
+  data:
+    redis:
+      host: localhost
+app:
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET_KEY:dev-default-base64-secret}
+    cors:
+      allowed-origins: http://localhost:3000,http://localhost:3001
 ```
 
 ### Environment Variables
 
 | Variable | Description | Required |
 |----------|-------------|----------|
+| `APP_PORT` | Host port mapping for API container | Optional (default: `8080`) |
+| `SPRING_PROFILES_ACTIVE` | Active profile (`dev` or `prod`) | Optional (default: `dev`) |
+| `POSTGRES_DB` | PostgreSQL database name | Docker deploy |
+| `POSTGRES_USER` | PostgreSQL username | Docker deploy |
+| `POSTGRES_PASSWORD` | PostgreSQL password | Docker deploy |
+| `DB_URL` | PostgreSQL JDBC URL | Prod |
+| `DB_USERNAME` | PostgreSQL username | Prod |
+| `DB_PASSWORD` | PostgreSQL password | Prod |
+| `REDIS_HOST` | Redis host | Prod |
+| `REDIS_PORT` | Redis port | Optional (default: `6379`) |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to Google Service Account JSON | For video streaming |
-| `JWT_SECRET_KEY` | Override JWT secret | Production |
+| `JWT_SECRET_KEY` | JWT signing secret (base64 recommended) | Prod |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed origins | Prod |
+
+> Docker deploy uses `.env` (copy from `.env.example`).
+> If you need Google Drive streaming in Docker, mount your credential file and set `GOOGLE_APPLICATION_CREDENTIALS` to that mounted path.
 
 ---
 
@@ -230,7 +267,9 @@ curl -X GET "http://localhost:8080/api/v1/vocab/review?limit=10" \
 | `/api/v1/game/answer` | POST | Submit game answer | ✅ |
 | `/api/v1/videos/{id}/stream` | GET | Stream video content | ✅ |
 
-> All responses follow a standard format: `{ "status": 200, "message": "...", "data": {...} }`
+> All responses follow a standard format:  
+> `{ "status": 200, "message": "...", "data": {...}, "path": "...", "timestamp": "..." }`  
+> Error responses include `errorCode` and optional `errors` details.
 
 ---
 
@@ -246,7 +285,10 @@ japan-web/
 │   │   ├── GrammarController.java
 │   │   ├── GameController.java
 │   │   └── VideoStreamController.java
-│   ├── dto/             # Data Transfer Objects
+│   ├── dto/
+│   │   ├── common/      # ApiResponse envelope
+│   │   ├── request/     # Request DTOs by module
+│   │   └── response/    # Response DTOs by module
 │   ├── entity/          # JPA entities
 │   │   ├── User.java
 │   │   ├── VocabCourse.java
@@ -265,8 +307,12 @@ japan-web/
 │       ├── GameService.java
 │       └── GoogleDriveService.java
 ├── src/main/resources/
-│   ├── application.properties
+│   ├── application.yml
+│   ├── application-dev.yml
+│   ├── application-prod.yml
 │   └── db/migration/    # Flyway migrations
+├── Dockerfile
+├── compose.yaml
 ├── docker-compose.yml
 ├── pom.xml
 └── README.md
