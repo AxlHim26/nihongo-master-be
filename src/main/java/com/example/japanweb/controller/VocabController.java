@@ -13,10 +13,13 @@ import com.example.japanweb.repository.UserLearningProgressRepository;
 import com.example.japanweb.service.SrsService;
 import com.example.japanweb.service.VocabService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -28,6 +31,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/vocab")
 @RequiredArgsConstructor
+@Validated
 public class VocabController {
 
     private final VocabService vocabService;
@@ -39,8 +43,8 @@ public class VocabController {
      */
     @GetMapping("/courses")
     public ApiResponse<Page<VocabCourseDTO>> getCourses(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
 
         Page<VocabCourseDTO> courses = vocabService.getAllCourses(PageRequest.of(page, size));
         return ApiResponse.success(courses);
@@ -61,7 +65,7 @@ public class VocabController {
     @GetMapping("/review")
     public ApiResponse<List<VocabEntryDTO>> getDueForReview(
             @AuthenticationPrincipal User user,
-            @RequestParam(defaultValue = "20") int limit) {
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
 
         List<UserLearningProgress> dueProgress = progressRepository
                 .findDueForReviewWithLimit(user.getId(), LocalDateTime.now(), limit);

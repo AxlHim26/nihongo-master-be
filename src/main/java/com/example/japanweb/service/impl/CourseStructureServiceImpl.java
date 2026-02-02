@@ -8,7 +8,12 @@ import com.example.japanweb.dto.response.course.CourseChapterDTO;
 import com.example.japanweb.dto.response.course.CourseDTO;
 import com.example.japanweb.dto.response.course.CourseLessonDTO;
 import com.example.japanweb.dto.response.course.CourseSectionDTO;
-import com.example.japanweb.entity.*;
+import com.example.japanweb.entity.Course;
+import com.example.japanweb.entity.CourseChapter;
+import com.example.japanweb.entity.CourseLesson;
+import com.example.japanweb.entity.CourseSection;
+import com.example.japanweb.entity.CourseSectionStatus;
+import com.example.japanweb.entity.CourseSectionType;
 import com.example.japanweb.exception.ApiException;
 import com.example.japanweb.exception.ErrorCode;
 import com.example.japanweb.repository.CourseChapterRepository;
@@ -17,16 +22,26 @@ import com.example.japanweb.repository.CourseRepository;
 import com.example.japanweb.repository.CourseSectionRepository;
 import com.example.japanweb.service.CourseStructureService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class CourseStructureServiceImpl implements CourseStructureService {
+
+    private static final String CACHE_COURSES = "course_structure_courses";
+    private static final String CACHE_COURSE_BY_ID = "course_structure_course_by_id";
+    private static final String CACHE_CHAPTERS = "course_structure_chapters";
+    private static final String CACHE_SECTIONS = "course_structure_sections";
+    private static final String CACHE_LESSONS = "course_structure_lessons";
 
     private final CourseRepository courseRepository;
     private final CourseChapterRepository chapterRepository;
@@ -35,44 +50,68 @@ public class CourseStructureServiceImpl implements CourseStructureService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CACHE_COURSES, key = "'tree=' + #includeTree")
     public List<CourseDTO> getAllCourses(boolean includeTree) {
-        return courseRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
-                .map(course -> toCourseDTO(course, includeTree))
-                .toList();
+        List<Course> courses = courseRepository.findAllByOrderByCreatedAtDesc();
+        return toCourseDTOs(courses, includeTree);
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CACHE_COURSE_BY_ID, key = "#courseId")
     public CourseDTO getCourseById(Long courseId) {
         Course course = getCourseOrThrow(courseId);
-        return toCourseDTO(course, true);
+        return toCourseDTOs(List.of(course), true).getFirst();
     }
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_COURSES, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_COURSE_BY_ID, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CHAPTERS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_SECTIONS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_LESSONS, allEntries = true)
+    })
     public CourseDTO createCourse(CourseRequest request) {
         Course course = Course.builder()
-                .name(request.getName().trim())
-                .description(request.getDescription())
-                .thumbnailUrl(request.getThumbnailUrl())
+                .name(requiredText(request.getName()))
+                .description(normalizeText(request.getDescription()))
+                .thumbnailUrl(normalizeText(request.getThumbnailUrl()))
                 .build();
 
-        return toCourseDTO(courseRepository.save(course), true);
+        Course saved = courseRepository.save(course);
+        return getCourseById(saved.getId());
     }
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_COURSES, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_COURSE_BY_ID, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CHAPTERS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_SECTIONS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_LESSONS, allEntries = true)
+    })
     public CourseDTO updateCourse(Long courseId, CourseRequest request) {
         Course course = getCourseOrThrow(courseId);
-        course.setName(request.getName().trim());
-        course.setDescription(request.getDescription());
-        course.setThumbnailUrl(request.getThumbnailUrl());
+        course.setName(requiredText(request.getName()));
+        course.setDescription(normalizeText(request.getDescription()));
+        course.setThumbnailUrl(normalizeText(request.getThumbnailUrl()));
 
-        return toCourseDTO(courseRepository.save(course), true);
+        Course saved = courseRepository.save(course);
+        return getCourseById(saved.getId());
     }
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_COURSES, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_COURSE_BY_ID, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CHAPTERS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_SECTIONS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_LESSONS, allEntries = true)
+    })
     public void deleteCourse(Long courseId) {
         Course course = getCourseOrThrow(courseId);
         courseRepository.delete(course);
@@ -80,41 +119,66 @@ public class CourseStructureServiceImpl implements CourseStructureService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CACHE_CHAPTERS, key = "'all'")
     public List<CourseChapterDTO> getAllChapters() {
-        return chapterRepository.findAll(Sort.by(Sort.Direction.ASC, "chapterOrder")).stream()
-                .map(chapter -> toChapterDTO(chapter, false))
+        return chapterRepository.findAllByOrderByChapterOrderAscIdAsc().stream()
+                .map(chapter -> toChapterDTO(chapter, List.of()))
                 .toList();
     }
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_COURSES, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_COURSE_BY_ID, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CHAPTERS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_SECTIONS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_LESSONS, allEntries = true)
+    })
     public CourseChapterDTO createChapter(Long courseId, ChapterRequest request) {
         Course course = getCourseOrThrow(courseId);
 
         CourseChapter chapter = CourseChapter.builder()
                 .course(course)
-                .title(request.getTitle().trim())
-                .description(request.getDescription())
+                .title(requiredText(request.getTitle()))
+                .description(normalizeText(request.getDescription()))
                 .chapterOrder(request.getChapterOrder() == null ? 0 : request.getChapterOrder())
                 .build();
 
-        return toChapterDTO(chapterRepository.save(chapter), true);
+        CourseChapter saved = chapterRepository.save(chapter);
+        return toChapterDTO(saved, List.of());
     }
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_COURSES, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_COURSE_BY_ID, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CHAPTERS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_SECTIONS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_LESSONS, allEntries = true)
+    })
     public CourseChapterDTO updateChapter(Long chapterId, ChapterRequest request) {
         CourseChapter chapter = getChapterOrThrow(chapterId);
 
-        chapter.setTitle(request.getTitle().trim());
-        chapter.setDescription(request.getDescription());
+        chapter.setTitle(requiredText(request.getTitle()));
+        chapter.setDescription(normalizeText(request.getDescription()));
         chapter.setChapterOrder(request.getChapterOrder() == null ? 0 : request.getChapterOrder());
 
-        return toChapterDTO(chapterRepository.save(chapter), true);
+        CourseChapter saved = chapterRepository.save(chapter);
+        Map<Long, List<CourseSectionDTO>> sectionsByChapter = buildSectionsByChapterId(List.of(saved.getId()));
+        return toChapterDTO(saved, sectionsByChapter.getOrDefault(saved.getId(), List.of()));
     }
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_COURSES, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_COURSE_BY_ID, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CHAPTERS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_SECTIONS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_LESSONS, allEntries = true)
+    })
     public void deleteChapter(Long chapterId) {
         CourseChapter chapter = getChapterOrThrow(chapterId);
         chapterRepository.delete(chapter);
@@ -122,49 +186,76 @@ public class CourseStructureServiceImpl implements CourseStructureService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CACHE_SECTIONS, key = "#type == null ? 'all' : #type.name()")
     public List<CourseSectionDTO> getSections(CourseSectionType type) {
         List<CourseSection> sections = type == null
-                ? sectionRepository.findAll(Sort.by(Sort.Direction.ASC, "sectionOrder"))
-                : sectionRepository.findByTypeOrderBySectionOrderAsc(type);
+                ? sectionRepository.findAllByOrderBySectionOrderAscIdAsc()
+                : sectionRepository.findByTypeOrderBySectionOrderAscIdAsc(type);
 
-        return sections.stream().map(section -> toSectionDTO(section, false)).toList();
+        return sections.stream()
+                .map(section -> toSectionDTO(section, List.of()))
+                .toList();
     }
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_COURSES, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_COURSE_BY_ID, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CHAPTERS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_SECTIONS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_LESSONS, allEntries = true)
+    })
     public CourseSectionDTO createSection(Long chapterId, SectionRequest request) {
         CourseChapter chapter = getChapterOrThrow(chapterId);
 
         CourseSection section = CourseSection.builder()
                 .chapter(chapter)
                 .type(request.getType())
-                .title(request.getTitle().trim())
-                .level(request.getLevel())
-                .topic(request.getTopic())
+                .title(requiredText(request.getTitle()))
+                .level(normalizeText(request.getLevel()))
+                .topic(normalizeText(request.getTopic()))
                 .status(request.getStatus() == null ? CourseSectionStatus.ACTIVE : request.getStatus())
                 .sectionOrder(request.getSectionOrder() == null ? 0 : request.getSectionOrder())
                 .build();
 
-        return toSectionDTO(sectionRepository.save(section), true);
+        CourseSection saved = sectionRepository.save(section);
+        return toSectionDTO(saved, List.of());
     }
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_COURSES, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_COURSE_BY_ID, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CHAPTERS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_SECTIONS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_LESSONS, allEntries = true)
+    })
     public CourseSectionDTO updateSection(Long sectionId, SectionRequest request) {
         CourseSection section = getSectionOrThrow(sectionId);
 
         section.setType(request.getType());
-        section.setTitle(request.getTitle().trim());
-        section.setLevel(request.getLevel());
-        section.setTopic(request.getTopic());
+        section.setTitle(requiredText(request.getTitle()));
+        section.setLevel(normalizeText(request.getLevel()));
+        section.setTopic(normalizeText(request.getTopic()));
         section.setStatus(request.getStatus() == null ? CourseSectionStatus.ACTIVE : request.getStatus());
         section.setSectionOrder(request.getSectionOrder() == null ? 0 : request.getSectionOrder());
 
-        return toSectionDTO(sectionRepository.save(section), true);
+        CourseSection saved = sectionRepository.save(section);
+        Map<Long, List<CourseLessonDTO>> lessonsBySection = buildLessonsBySectionId(List.of(saved.getId()));
+        return toSectionDTO(saved, lessonsBySection.getOrDefault(saved.getId(), List.of()));
     }
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_COURSES, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_COURSE_BY_ID, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CHAPTERS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_SECTIONS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_LESSONS, allEntries = true)
+    })
     public void deleteSection(Long sectionId) {
         CourseSection section = getSectionOrThrow(sectionId);
         sectionRepository.delete(section);
@@ -172,22 +263,30 @@ public class CourseStructureServiceImpl implements CourseStructureService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CACHE_LESSONS, key = "'all'")
     public List<CourseLessonDTO> getAllLessons() {
-        return lessonRepository.findAll(Sort.by(Sort.Direction.ASC, "lessonOrder")).stream()
+        return lessonRepository.findAllByOrderByLessonOrderAscIdAsc().stream()
                 .map(this::toLessonDTO)
                 .toList();
     }
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_COURSES, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_COURSE_BY_ID, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CHAPTERS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_SECTIONS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_LESSONS, allEntries = true)
+    })
     public CourseLessonDTO createLesson(Long sectionId, LessonRequest request) {
         CourseSection section = getSectionOrThrow(sectionId);
 
         CourseLesson lesson = CourseLesson.builder()
                 .section(section)
-                .title(request.getTitle().trim())
-                .videoUrl(request.getVideoUrl())
-                .pdfUrl(request.getPdfUrl())
+                .title(requiredText(request.getTitle()))
+                .videoUrl(normalizeText(request.getVideoUrl()))
+                .pdfUrl(normalizeText(request.getPdfUrl()))
                 .lessonOrder(request.getLessonOrder() == null ? 0 : request.getLessonOrder())
                 .build();
 
@@ -196,12 +295,19 @@ public class CourseStructureServiceImpl implements CourseStructureService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_COURSES, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_COURSE_BY_ID, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CHAPTERS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_SECTIONS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_LESSONS, allEntries = true)
+    })
     public CourseLessonDTO updateLesson(Long lessonId, LessonRequest request) {
         CourseLesson lesson = getLessonOrThrow(lessonId);
 
-        lesson.setTitle(request.getTitle().trim());
-        lesson.setVideoUrl(request.getVideoUrl());
-        lesson.setPdfUrl(request.getPdfUrl());
+        lesson.setTitle(requiredText(request.getTitle()));
+        lesson.setVideoUrl(normalizeText(request.getVideoUrl()));
+        lesson.setPdfUrl(normalizeText(request.getPdfUrl()));
         lesson.setLessonOrder(request.getLessonOrder() == null ? 0 : request.getLessonOrder());
 
         return toLessonDTO(lessonRepository.save(lesson));
@@ -209,6 +315,13 @@ public class CourseStructureServiceImpl implements CourseStructureService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_COURSES, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_COURSE_BY_ID, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CHAPTERS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_SECTIONS, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_LESSONS, allEntries = true)
+    })
     public void deleteLesson(Long lessonId) {
         CourseLesson lesson = getLessonOrThrow(lessonId);
         lessonRepository.delete(lesson);
@@ -238,7 +351,93 @@ public class CourseStructureServiceImpl implements CourseStructureService {
                         "Lesson not found with id: " + lessonId));
     }
 
-    private CourseDTO toCourseDTO(Course course, boolean includeTree) {
+    private List<CourseDTO> toCourseDTOs(List<Course> courses, boolean includeTree) {
+        if (!includeTree) {
+            return courses.stream()
+                    .map(course -> toCourseDTO(course, List.of()))
+                    .toList();
+        }
+
+        Map<Long, List<CourseChapterDTO>> chaptersByCourse = buildChaptersByCourseId(
+                courses.stream().map(Course::getId).toList()
+        );
+
+        return courses.stream()
+                .map(course -> toCourseDTO(course, chaptersByCourse.getOrDefault(course.getId(), List.of())))
+                .toList();
+    }
+
+    private Map<Long, List<CourseChapterDTO>> buildChaptersByCourseId(List<Long> courseIds) {
+        if (courseIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<CourseChapter> chapters = chapterRepository.findByCourseIdInOrderByCourseIdAscChapterOrderAscIdAsc(
+                courseIds
+        );
+        if (chapters.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, List<CourseSectionDTO>> sectionsByChapter = buildSectionsByChapterId(
+                chapters.stream().map(CourseChapter::getId).toList()
+        );
+
+        Map<Long, List<CourseChapterDTO>> chaptersByCourse = new LinkedHashMap<>();
+        for (CourseChapter chapter : chapters) {
+            List<CourseSectionDTO> sections = sectionsByChapter.getOrDefault(chapter.getId(), List.of());
+            chaptersByCourse.computeIfAbsent(chapter.getCourse().getId(), ignored -> new ArrayList<>())
+                    .add(toChapterDTO(chapter, sections));
+        }
+        return chaptersByCourse;
+    }
+
+    private Map<Long, List<CourseSectionDTO>> buildSectionsByChapterId(List<Long> chapterIds) {
+        if (chapterIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<CourseSection> sections = sectionRepository.findByChapterIdInOrderByChapterIdAscSectionOrderAscIdAsc(
+                chapterIds
+        );
+        if (sections.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, List<CourseLessonDTO>> lessonsBySection = buildLessonsBySectionId(
+                sections.stream().map(CourseSection::getId).toList()
+        );
+
+        Map<Long, List<CourseSectionDTO>> sectionsByChapter = new LinkedHashMap<>();
+        for (CourseSection section : sections) {
+            List<CourseLessonDTO> lessons = lessonsBySection.getOrDefault(section.getId(), List.of());
+            sectionsByChapter.computeIfAbsent(section.getChapter().getId(), ignored -> new ArrayList<>())
+                    .add(toSectionDTO(section, lessons));
+        }
+        return sectionsByChapter;
+    }
+
+    private Map<Long, List<CourseLessonDTO>> buildLessonsBySectionId(List<Long> sectionIds) {
+        if (sectionIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<CourseLesson> lessons = lessonRepository.findBySectionIdInOrderBySectionIdAscLessonOrderAscIdAsc(
+                sectionIds
+        );
+        if (lessons.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, List<CourseLessonDTO>> lessonsBySection = new LinkedHashMap<>();
+        for (CourseLesson lesson : lessons) {
+            lessonsBySection.computeIfAbsent(lesson.getSection().getId(), ignored -> new ArrayList<>())
+                    .add(toLessonDTO(lesson));
+        }
+        return lessonsBySection;
+    }
+
+    private CourseDTO toCourseDTO(Course course, List<CourseChapterDTO> chapters) {
         return CourseDTO.builder()
                 .id(course.getId())
                 .name(course.getName())
@@ -246,32 +445,22 @@ public class CourseStructureServiceImpl implements CourseStructureService {
                 .thumbnailUrl(course.getThumbnailUrl())
                 .createdAt(course.getCreatedAt())
                 .updatedAt(course.getUpdatedAt())
-                .chapters(includeTree
-                        ? course.getChapters().stream()
-                                .sorted(Comparator.comparing(CourseChapter::getChapterOrder))
-                                .map(chapter -> toChapterDTO(chapter, true))
-                                .toList()
-                        : List.of())
+                .chapters(chapters)
                 .build();
     }
 
-    private CourseChapterDTO toChapterDTO(CourseChapter chapter, boolean includeSections) {
+    private CourseChapterDTO toChapterDTO(CourseChapter chapter, List<CourseSectionDTO> sections) {
         return CourseChapterDTO.builder()
                 .id(chapter.getId())
                 .courseId(chapter.getCourse().getId())
                 .title(chapter.getTitle())
                 .description(chapter.getDescription())
                 .chapterOrder(chapter.getChapterOrder())
-                .sections(includeSections
-                        ? chapter.getSections().stream()
-                                .sorted(Comparator.comparing(CourseSection::getSectionOrder))
-                                .map(section -> toSectionDTO(section, true))
-                                .toList()
-                        : List.of())
+                .sections(sections)
                 .build();
     }
 
-    private CourseSectionDTO toSectionDTO(CourseSection section, boolean includeLessons) {
+    private CourseSectionDTO toSectionDTO(CourseSection section, List<CourseLessonDTO> lessons) {
         return CourseSectionDTO.builder()
                 .id(section.getId())
                 .chapterId(section.getChapter().getId())
@@ -281,12 +470,7 @@ public class CourseStructureServiceImpl implements CourseStructureService {
                 .topic(section.getTopic())
                 .status(section.getStatus())
                 .sectionOrder(section.getSectionOrder())
-                .lessons(includeLessons
-                        ? section.getLessons().stream()
-                                .sorted(Comparator.comparing(CourseLesson::getLessonOrder))
-                                .map(this::toLessonDTO)
-                                .toList()
-                        : List.of())
+                .lessons(lessons)
                 .build();
     }
 
@@ -299,5 +483,17 @@ public class CourseStructureServiceImpl implements CourseStructureService {
                 .pdfUrl(lesson.getPdfUrl())
                 .lessonOrder(lesson.getLessonOrder())
                 .build();
+    }
+
+    private String requiredText(String value) {
+        return value.trim();
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }
