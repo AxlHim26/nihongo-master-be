@@ -1,8 +1,8 @@
 package com.example.japanweb.controller;
 
-import com.example.japanweb.dto.ApiResponse;
-import com.example.japanweb.dto.GrammarBookDTO;
-import com.example.japanweb.dto.GrammarChapterDetailDTO;
+import com.example.japanweb.dto.common.ApiResponse;
+import com.example.japanweb.dto.response.grammar.GrammarBookDTO;
+import com.example.japanweb.dto.response.grammar.GrammarChapterDetailDTO;
 import com.example.japanweb.service.GrammarService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;

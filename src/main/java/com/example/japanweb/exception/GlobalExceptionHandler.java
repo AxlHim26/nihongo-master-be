@@ -1,6 +1,8 @@
 package com.example.japanweb.exception;
 
-import com.example.japanweb.dto.ApiResponse;
+import com.example.japanweb.dto.common.ApiResponse;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -13,7 +15,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,135 +26,117 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /**
-     * Handle custom API exceptions
-     */
     @ExceptionHandler(ApiException.class)
-    public ResponseEntity<ApiResponse<Void>> handleApiException(ApiException ex) {
-        log.warn("API Exception: {} - {}", ex.getErrorCode().getCode(), ex.getMessage());
-
-        ApiResponse<Void> response = ApiResponse.error(
-                ex.getHttpStatus(),
-                ex.getMessage(),
-                ex.getErrorCode().getCode());
-
-        return ResponseEntity.status(ex.getHttpStatus()).body(response);
+    public ResponseEntity<ApiResponse<Object>> handleApiException(ApiException ex) {
+        log.warn(
+                "Handled ApiException code={} status={} message={}",
+                ex.getErrorCode().getCode(),
+                ex.getHttpStatus().value(),
+                ex.getMessage()
+        );
+        return buildErrorResponse(ex.getErrorCode(), ex.getMessage(), ex.getDetails());
     }
 
-    /**
-     * Handle validation errors from @Valid annotations
-     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationException(
+    public ResponseEntity<ApiResponse<Object>> handleValidationException(
             MethodArgumentNotValidException ex) {
 
-        Map<String, String> errors = new HashMap<>();
+        Map<String, String> errors = new LinkedHashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
+            errors.putIfAbsent(fieldName, errorMessage);
         });
 
-        ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
-                .status(400)
-                .message("Validation failed")
-                .data(errors)
-                .errorCode(ErrorCode.VALIDATION_FAILED.getCode())
-                .build();
-
-        return ResponseEntity.badRequest().body(response);
+        return buildErrorResponse(ErrorCode.VALIDATION_FAILED, ErrorCode.VALIDATION_FAILED.getDefaultMessage(), errors);
     }
 
-    /**
-     * Handle constraint violations
-     */
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException ex) {
-        ApiResponse<Void> response = ApiResponse.error(
-                400,
-                ex.getMessage(),
-                ErrorCode.VALIDATION_FAILED.getCode());
+    public ResponseEntity<ApiResponse<Object>> handleConstraintViolation(ConstraintViolationException ex) {
+        List<String> errors = ex.getConstraintViolations().stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .toList();
 
-        return ResponseEntity.badRequest().body(response);
+        return buildErrorResponse(ErrorCode.VALIDATION_FAILED, ErrorCode.VALIDATION_FAILED.getDefaultMessage(), errors);
     }
 
-    /**
-     * Handle authentication errors
-     */
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
-        ApiResponse<Void> response = ApiResponse.error(
-                401,
-                "Invalid username or password",
-                ErrorCode.AUTH_INVALID_CREDENTIALS.getCode());
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    public ResponseEntity<ApiResponse<Object>> handleBadCredentials(BadCredentialsException ex) {
+        return buildErrorResponse(
+                ErrorCode.AUTH_INVALID_CREDENTIALS,
+                ErrorCode.AUTH_INVALID_CREDENTIALS.getDefaultMessage(),
+                null
+        );
     }
 
-    /**
-     * Handle authentication exceptions
-     */
+    @ExceptionHandler(ExpiredJwtException.class)
+    public ResponseEntity<ApiResponse<Object>> handleExpiredJwt(ExpiredJwtException ex) {
+        return buildErrorResponse(
+                ErrorCode.AUTH_TOKEN_EXPIRED,
+                ErrorCode.AUTH_TOKEN_EXPIRED.getDefaultMessage(),
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(JwtException.class)
+    public ResponseEntity<ApiResponse<Object>> handleJwtException(JwtException ex) {
+        return buildErrorResponse(
+                ErrorCode.AUTH_TOKEN_INVALID,
+                ErrorCode.AUTH_TOKEN_INVALID.getDefaultMessage(),
+                ex.getMessage()
+        );
+    }
+
     @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAuthentication(AuthenticationException ex) {
-        ApiResponse<Void> response = ApiResponse.error(
-                401,
-                ex.getMessage(),
-                ErrorCode.AUTH_TOKEN_INVALID.getCode());
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    public ResponseEntity<ApiResponse<Object>> handleAuthentication(AuthenticationException ex) {
+        return buildErrorResponse(
+                ErrorCode.AUTH_TOKEN_INVALID,
+                ErrorCode.AUTH_TOKEN_INVALID.getDefaultMessage(),
+                ex.getMessage()
+        );
     }
 
-    /**
-     * Handle access denied
-     */
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
-        ApiResponse<Void> response = ApiResponse.error(
-                403,
-                "Access denied",
-                ErrorCode.AUTH_ACCESS_DENIED.getCode());
-
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex) {
+        return buildErrorResponse(
+                ErrorCode.AUTH_ACCESS_DENIED,
+                ErrorCode.AUTH_ACCESS_DENIED.getDefaultMessage(),
+                ex.getMessage()
+        );
     }
 
-    /**
-     * Handle illegal argument exceptions
-     */
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
-        ApiResponse<Void> response = ApiResponse.error(
-                400,
+    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+    public ResponseEntity<ApiResponse<Object>> handleBadInput(RuntimeException ex) {
+        return buildErrorResponse(
+                ErrorCode.VALIDATION_INVALID_FORMAT,
                 ex.getMessage(),
-                ErrorCode.VALIDATION_FAILED.getCode());
-
-        return ResponseEntity.badRequest().body(response);
+                null
+        );
     }
 
-    /**
-     * Handle illegal state exceptions (e.g., game session expired)
-     */
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ApiResponse<Void>> handleIllegalState(IllegalStateException ex) {
-        ApiResponse<Void> response = ApiResponse.error(
-                400,
-                ex.getMessage(),
-                ErrorCode.VALIDATION_FAILED.getCode());
-
-        return ResponseEntity.badRequest().body(response);
-    }
-
-    /**
-     * Handle all other uncaught exceptions
-     */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
+    public ResponseEntity<ApiResponse<Object>> handleGenericException(Exception ex) {
         log.error("Unhandled exception", ex);
+        return buildErrorResponse(
+                ErrorCode.INTERNAL_ERROR,
+                ErrorCode.INTERNAL_ERROR.getDefaultMessage(),
+                null
+        );
+    }
 
-        ApiResponse<Void> response = ApiResponse.error(
-                500,
-                "An internal error occurred",
-                ErrorCode.INTERNAL_ERROR.getCode());
+    private ResponseEntity<ApiResponse<Object>> buildErrorResponse(
+            ErrorCode errorCode,
+            String message,
+            Object details
+    ) {
+        HttpStatus status = errorCode.getHttpStatus();
+        ApiResponse<Object> response = ApiResponse.error(
+                status,
+                message,
+                errorCode.getCode(),
+                details
+        );
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        return ResponseEntity.status(status).body(response);
     }
 }

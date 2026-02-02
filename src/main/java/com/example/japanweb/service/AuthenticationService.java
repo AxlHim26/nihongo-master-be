@@ -1,9 +1,11 @@
 package com.example.japanweb.service;
 
-import com.example.japanweb.dto.AuthRequest;
-import com.example.japanweb.dto.AuthResponse;
-import com.example.japanweb.dto.RegisterRequest;
+import com.example.japanweb.dto.request.auth.AuthRequest;
+import com.example.japanweb.dto.response.auth.AuthResponse;
+import com.example.japanweb.dto.request.auth.RegisterRequest;
 import com.example.japanweb.entity.User;
+import com.example.japanweb.exception.ApiException;
+import com.example.japanweb.exception.ErrorCode;
 import com.example.japanweb.repository.UserRepository;
 import com.example.japanweb.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +23,16 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
 
     public AuthResponse register(RegisterRequest request) {
+        if (repository.existsByUsername(request.getUsername())) {
+            throw new ApiException(ErrorCode.AUTH_USERNAME_EXISTS);
+        }
+        if (repository.existsByEmail(request.getEmail())) {
+            throw new ApiException(ErrorCode.AUTH_EMAIL_EXISTS);
+        }
+
         var user = User.builder()
                 .username(request.getUsername())
+                .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(User.Role.USER)
                 .build();
@@ -41,7 +51,7 @@ public class AuthenticationService {
                 )
         );
         var user = repository.findByUsername(request.getUsername())
-                .orElseThrow();
+                .orElseThrow(() -> new ApiException(ErrorCode.AUTH_INVALID_CREDENTIALS));
         var jwtToken = jwtService.generateToken(user);
         return AuthResponse.builder()
                 .token(jwtToken)

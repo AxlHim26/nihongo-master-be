@@ -1,6 +1,6 @@
 package com.example.japanweb.service;
 
-import com.example.japanweb.dto.BulkImportResultDTO;
+import com.example.japanweb.dto.response.vocab.BulkImportResultDTO;
 import org.springframework.web.multipart.MultipartFile;
 
 /**

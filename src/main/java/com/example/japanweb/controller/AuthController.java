@@ -1,9 +1,9 @@
 package com.example.japanweb.controller;
 
-import com.example.japanweb.dto.ApiResponse;
-import com.example.japanweb.dto.AuthRequest;
-import com.example.japanweb.dto.AuthResponse;
-import com.example.japanweb.dto.RegisterRequest;
+import com.example.japanweb.dto.common.ApiResponse;
+import com.example.japanweb.dto.request.auth.AuthRequest;
+import com.example.japanweb.dto.response.auth.AuthResponse;
+import com.example.japanweb.dto.request.auth.RegisterRequest;
 import com.example.japanweb.service.AuthenticationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

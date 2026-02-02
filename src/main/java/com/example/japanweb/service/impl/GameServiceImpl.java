@@ -1,8 +1,8 @@
 package com.example.japanweb.service.impl;
 
-import com.example.japanweb.dto.GameQuestionDTO;
-import com.example.japanweb.dto.GameResultDTO;
-import com.example.japanweb.dto.GameStartResponseDTO;
+import com.example.japanweb.dto.response.game.GameQuestionDTO;
+import com.example.japanweb.dto.response.game.GameResultDTO;
+import com.example.japanweb.dto.response.game.GameStartResponseDTO;
 import com.example.japanweb.entity.VocabEntry;
 import com.example.japanweb.exception.ApiException;
 import com.example.japanweb.exception.ErrorCode;

@@ -1,7 +1,7 @@
 package com.example.japanweb.controller;
 
-import com.example.japanweb.dto.ApiResponse;
-import com.example.japanweb.dto.VocabCourseDTO;
+import com.example.japanweb.dto.common.ApiResponse;
+import com.example.japanweb.dto.response.vocab.VocabCourseDTO;
 import com.example.japanweb.service.VocabService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
