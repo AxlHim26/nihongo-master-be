@@ -1,8 +1,8 @@
 package com.example.japanweb.service.impl;
 
-import com.example.japanweb.dto.VocabCourseDTO;
-import com.example.japanweb.dto.VocabCourseDetailDTO;
-import com.example.japanweb.dto.VocabEntryDTO;
+import com.example.japanweb.dto.response.vocab.VocabCourseDTO;
+import com.example.japanweb.dto.response.vocab.VocabCourseDetailDTO;
+import com.example.japanweb.dto.response.vocab.VocabEntryDTO;
 import com.example.japanweb.entity.VocabCourse;
 import com.example.japanweb.exception.ApiException;
 import com.example.japanweb.exception.ErrorCode;

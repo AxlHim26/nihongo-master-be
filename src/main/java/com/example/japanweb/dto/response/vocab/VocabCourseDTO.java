@@ -1,4 +1,4 @@
-package com.example.japanweb.dto;
+package com.example.japanweb.dto.response.vocab;
 
 import com.example.japanweb.entity.VocabCourse;
 import lombok.Builder;

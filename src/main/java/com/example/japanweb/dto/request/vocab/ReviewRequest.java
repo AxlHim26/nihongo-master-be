@@ -1,4 +1,4 @@
-package com.example.japanweb.dto;
+package com.example.japanweb.dto.request.vocab;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

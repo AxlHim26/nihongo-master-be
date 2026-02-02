@@ -1,4 +1,4 @@
-package com.example.japanweb.dto;
+package com.example.japanweb.dto.response.auth;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

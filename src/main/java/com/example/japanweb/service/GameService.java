@@ -1,7 +1,7 @@
 package com.example.japanweb.service;
 
-import com.example.japanweb.dto.GameResultDTO;
-import com.example.japanweb.dto.GameStartResponseDTO;
+import com.example.japanweb.dto.response.game.GameResultDTO;
+import com.example.japanweb.dto.response.game.GameStartResponseDTO;
 
 public interface GameService {
     /**

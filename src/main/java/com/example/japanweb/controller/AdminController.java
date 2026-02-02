@@ -1,7 +1,7 @@
 package com.example.japanweb.controller;
 
-import com.example.japanweb.dto.ApiResponse;
-import com.example.japanweb.dto.BulkImportResultDTO;
+import com.example.japanweb.dto.common.ApiResponse;
+import com.example.japanweb.dto.response.vocab.BulkImportResultDTO;
 import com.example.japanweb.service.BulkImportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;

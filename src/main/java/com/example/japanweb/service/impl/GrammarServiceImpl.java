@@ -1,13 +1,14 @@
 package com.example.japanweb.service.impl;
 
-import com.example.japanweb.dto.GrammarBookDTO;
-import com.example.japanweb.dto.GrammarChapterDetailDTO;
+import com.example.japanweb.dto.response.grammar.GrammarBookDTO;
+import com.example.japanweb.dto.response.grammar.GrammarChapterDetailDTO;
 import com.example.japanweb.entity.GrammarChapter;
+import com.example.japanweb.exception.ApiException;
+import com.example.japanweb.exception.ErrorCode;
 import com.example.japanweb.mapper.GrammarMapper;
 import com.example.japanweb.repository.GrammarBookRepository;
 import com.example.japanweb.repository.GrammarChapterRepository;
 import com.example.japanweb.service.GrammarService;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,7 +36,10 @@ public class GrammarServiceImpl implements GrammarService {
     @Transactional(readOnly = true)
     public GrammarChapterDetailDTO getChapterDetails(Long chapterId) {
         GrammarChapter chapter = grammarChapterRepository.findWithDetailsById(chapterId)
-                .orElseThrow(() -> new EntityNotFoundException("Chapter not found with id: " + chapterId));
+                .orElseThrow(() -> new ApiException(
+                        ErrorCode.GRAMMAR_CHAPTER_NOT_FOUND,
+                        "Chapter not found with id: " + chapterId
+                ));
         return grammarMapper.toChapterDetailDTO(chapter);
     }
 }

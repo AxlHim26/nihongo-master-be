@@ -1,4 +1,4 @@
-package com.example.japanweb.dto;
+package com.example.japanweb.dto.request.game;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

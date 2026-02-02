@@ -1,10 +1,14 @@
 package com.example.japanweb.controller;
 
-import com.example.japanweb.dto.*;
+import com.example.japanweb.dto.common.ApiResponse;
+import com.example.japanweb.dto.request.vocab.ReviewRequest;
+import com.example.japanweb.dto.response.vocab.ReviewResponse;
+import com.example.japanweb.dto.response.vocab.ReviewStatsDTO;
+import com.example.japanweb.dto.response.vocab.VocabCourseDTO;
+import com.example.japanweb.dto.response.vocab.VocabCourseDetailDTO;
+import com.example.japanweb.dto.response.vocab.VocabEntryDTO;
 import com.example.japanweb.entity.User;
 import com.example.japanweb.entity.UserLearningProgress;
-import com.example.japanweb.exception.ApiException;
-import com.example.japanweb.exception.ErrorCode;
 import com.example.japanweb.repository.UserLearningProgressRepository;
 import com.example.japanweb.service.SrsService;
 import com.example.japanweb.service.VocabService;

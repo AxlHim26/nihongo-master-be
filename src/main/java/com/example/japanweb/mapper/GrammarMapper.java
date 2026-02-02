@@ -1,9 +1,9 @@
 package com.example.japanweb.mapper;
 
-import com.example.japanweb.dto.GrammarBookDTO;
-import com.example.japanweb.dto.GrammarChapterDetailDTO;
-import com.example.japanweb.dto.GrammarExampleDTO;
-import com.example.japanweb.dto.GrammarPointDTO;
+import com.example.japanweb.dto.response.grammar.GrammarBookDTO;
+import com.example.japanweb.dto.response.grammar.GrammarChapterDetailDTO;
+import com.example.japanweb.dto.response.grammar.GrammarExampleDTO;
+import com.example.japanweb.dto.response.grammar.GrammarPointDTO;
 import com.example.japanweb.entity.GrammarBook;
 import com.example.japanweb.entity.GrammarChapter;
 import com.example.japanweb.entity.GrammarExample;

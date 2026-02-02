@@ -1,6 +1,10 @@
 package com.example.japanweb.controller;
 
-import com.example.japanweb.dto.*;
+import com.example.japanweb.dto.common.ApiResponse;
+import com.example.japanweb.dto.request.game.GameAnswerRequest;
+import com.example.japanweb.dto.request.game.GameStartRequest;
+import com.example.japanweb.dto.response.game.GameResultDTO;
+import com.example.japanweb.dto.response.game.GameStartResponseDTO;
 import com.example.japanweb.entity.User;
 import com.example.japanweb.service.GameService;
 import jakarta.validation.Valid;
@@ -24,7 +28,7 @@ public class GameController {
     @PostMapping("/start")
     public ApiResponse<GameStartResponseDTO> startGame(
             @AuthenticationPrincipal User user,
-            @RequestBody GameStartRequest request) {
+            @Valid @RequestBody GameStartRequest request) {
 
         GameStartResponseDTO response = gameService.startGame(request.getCourseId(), user.getId());
         return ApiResponse.success(response, "Game started successfully!");

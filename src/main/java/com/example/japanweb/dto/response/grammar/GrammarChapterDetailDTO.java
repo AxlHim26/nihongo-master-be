@@ -1,4 +1,4 @@
-package com.example.japanweb.dto;
+package com.example.japanweb.dto.response.grammar;
 
 import lombok.Builder;
 import lombok.Data;

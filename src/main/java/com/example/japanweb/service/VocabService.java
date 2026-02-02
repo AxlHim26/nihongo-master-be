@@ -1,7 +1,7 @@
 package com.example.japanweb.service;
 
-import com.example.japanweb.dto.VocabCourseDTO;
-import com.example.japanweb.dto.VocabCourseDetailDTO;
+import com.example.japanweb.dto.response.vocab.VocabCourseDTO;
+import com.example.japanweb.dto.response.vocab.VocabCourseDetailDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
