@@ -205,6 +205,9 @@ app:
 | `DB_URL` | PostgreSQL JDBC URL | Prod |
 | `DB_USERNAME` | PostgreSQL username | Prod |
 | `DB_PASSWORD` | PostgreSQL password | Prod |
+| `DB_POOL_MAX_SIZE` | Hikari max connections | Optional (`dev`: 10, `prod`: 25) |
+| `DB_POOL_MIN_IDLE` | Hikari min idle connections | Optional (`dev`: 2, `prod`: 5) |
+| `DB_POOL_CONNECTION_TIMEOUT_MS` | DB connection timeout (ms) | Optional (default: `20000`) |
 | `REDIS_HOST` | Redis host | Prod |
 | `REDIS_PORT` | Redis port | Optional (default: `6379`) |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to Google Service Account JSON | For video streaming |
