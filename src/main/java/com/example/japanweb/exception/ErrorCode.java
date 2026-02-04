@@ -19,6 +19,8 @@ public enum ErrorCode {
     AUTH_USER_NOT_FOUND("1005", HttpStatus.NOT_FOUND, "User not found"),
     AUTH_USERNAME_EXISTS("1006", HttpStatus.CONFLICT, "Username already exists"),
     AUTH_EMAIL_EXISTS("1007", HttpStatus.CONFLICT, "Email already exists"),
+    AUTH_ADMIN_REGISTRATION_DISABLED("1008", HttpStatus.FORBIDDEN, "Admin registration is disabled"),
+    AUTH_ADMIN_REGISTRATION_INVALID_KEY("1009", HttpStatus.FORBIDDEN, "Invalid admin registration key"),
 
     // Validation Errors (2xxx)
     VALIDATION_FAILED("2001", HttpStatus.BAD_REQUEST, "Validation failed"),
