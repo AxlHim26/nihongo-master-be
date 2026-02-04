@@ -1,6 +1,7 @@
 package com.example.japanweb.service;
 
 import com.example.japanweb.dto.request.auth.AuthRequest;
+import com.example.japanweb.dto.request.auth.RegisterAdminRequest;
 import com.example.japanweb.dto.request.auth.RegisterRequest;
 import com.example.japanweb.entity.User;
 import com.example.japanweb.exception.ApiException;
@@ -13,7 +14,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -36,8 +40,32 @@ public class AuthenticationService {
         var user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(User.Role.USER)
+                .build();
+        repository.save(user);
+        return issueTokens(user);
+    }
+
+    public IssuedTokens registerAdmin(RegisterAdminRequest request, String bootstrapKey) {
+        if (!StringUtils.hasText(bootstrapKey)) {
+            throw new ApiException(ErrorCode.AUTH_ADMIN_REGISTRATION_DISABLED);
+        }
+        if (!bootstrapKey.equals(request.getBootstrapKey())) {
+            throw new ApiException(ErrorCode.AUTH_ADMIN_REGISTRATION_INVALID_KEY);
+        }
+        if (repository.existsByUsername(request.getUsername())) {
+            throw new ApiException(ErrorCode.AUTH_USERNAME_EXISTS);
+        }
+        if (repository.existsByEmail(request.getEmail())) {
+            throw new ApiException(ErrorCode.AUTH_EMAIL_EXISTS);
+        }
+
+        var user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(User.Role.ADMIN)
                 .build();
         repository.save(user);
         return issueTokens(user);
@@ -87,7 +115,10 @@ public class AuthenticationService {
         String accessTokenId = UUID.randomUUID().toString();
         String refreshTokenId = UUID.randomUUID().toString();
 
-        String accessToken = jwtService.generateAccessToken(user, accessTokenId);
+        Map<String, Object> accessClaims = new HashMap<>();
+        accessClaims.put("email", user.getEmail());
+        accessClaims.put("role", user.getRole().name());
+        String accessToken = jwtService.generateAccessToken(user, accessTokenId, accessClaims);
         String refreshToken = jwtService.generateRefreshToken(user, refreshTokenId);
 
         authTokenStore.storeAccessToken(accessTokenId, user.getUsername(), jwtService.getAccessTokenExpiration());

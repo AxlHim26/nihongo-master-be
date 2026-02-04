@@ -1,7 +1,9 @@
 package com.example.japanweb.controller;
 
 import com.example.japanweb.dto.common.ApiResponse;
+import com.example.japanweb.config.properties.AdminBootstrapProperties;
 import com.example.japanweb.dto.request.auth.AuthRequest;
+import com.example.japanweb.dto.request.auth.RegisterAdminRequest;
 import com.example.japanweb.dto.response.auth.AuthResponse;
 import com.example.japanweb.dto.request.auth.RegisterRequest;
 import com.example.japanweb.exception.ApiException;
@@ -26,10 +28,23 @@ public class AuthController {
 
     private final AuthenticationService service;
     private final RefreshTokenCookieService refreshTokenCookieService;
+    private final AdminBootstrapProperties adminBootstrapProperties;
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
         AuthenticationService.IssuedTokens issuedTokens = service.register(request);
+        ApiResponse<AuthResponse> response = ApiResponse.created(AuthResponse.builder()
+                .token(issuedTokens.accessToken())
+                .build());
+        return withRefreshCookie(response, issuedTokens.refreshToken(), HttpStatus.CREATED);
+    }
+
+    @PostMapping("/register-admin")
+    public ResponseEntity<ApiResponse<AuthResponse>> registerAdmin(@Valid @RequestBody RegisterAdminRequest request) {
+        AuthenticationService.IssuedTokens issuedTokens = service.registerAdmin(
+                request,
+                adminBootstrapProperties.getKey()
+        );
         ApiResponse<AuthResponse> response = ApiResponse.created(AuthResponse.builder()
                 .token(issuedTokens.accessToken())
                 .build());
