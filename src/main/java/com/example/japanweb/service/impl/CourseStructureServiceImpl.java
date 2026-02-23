@@ -12,7 +12,6 @@ import com.example.japanweb.entity.Course;
 import com.example.japanweb.entity.CourseChapter;
 import com.example.japanweb.entity.CourseLesson;
 import com.example.japanweb.entity.CourseSection;
-import com.example.japanweb.entity.CourseSectionStatus;
 import com.example.japanweb.entity.CourseSectionType;
 import com.example.japanweb.exception.ApiException;
 import com.example.japanweb.exception.ErrorCode;
@@ -42,6 +41,11 @@ public class CourseStructureServiceImpl implements CourseStructureService {
     private static final String CACHE_CHAPTERS = "course_structure_chapters";
     private static final String CACHE_SECTIONS = "course_structure_sections";
     private static final String CACHE_LESSONS = "course_structure_lessons";
+    private static final List<CourseSectionType> DEFAULT_SECTION_TYPES = List.of(
+            CourseSectionType.GRAMMAR,
+            CourseSectionType.VOCABULARY,
+            CourseSectionType.KANJI
+    );
 
     private final CourseRepository courseRepository;
     private final CourseChapterRepository chapterRepository;
@@ -146,7 +150,11 @@ public class CourseStructureServiceImpl implements CourseStructureService {
                 .build();
 
         CourseChapter saved = chapterRepository.save(chapter);
-        return toChapterDTO(saved, List.of());
+        List<CourseSection> defaultSections = createDefaultSections(saved);
+        List<CourseSectionDTO> sectionDTOs = defaultSections.stream()
+                .map(section -> toSectionDTO(section, List.of()))
+                .toList();
+        return toChapterDTO(saved, sectionDTOs);
     }
 
     @Override
@@ -208,15 +216,20 @@ public class CourseStructureServiceImpl implements CourseStructureService {
     })
     public CourseSectionDTO createSection(Long chapterId, SectionRequest request) {
         CourseChapter chapter = getChapterOrThrow(chapterId);
+        if (sectionRepository.existsByChapterIdAndType(chapterId, request.getType())) {
+            throw new ApiException(
+                    ErrorCode.RESOURCE_ALREADY_EXISTS,
+                    "Section already exists for chapter " + chapterId + " and type " + request.getType()
+            );
+        }
 
         CourseSection section = CourseSection.builder()
                 .chapter(chapter)
                 .type(request.getType())
-                .title(requiredText(request.getTitle()))
-                .level(normalizeText(request.getLevel()))
-                .topic(normalizeText(request.getTopic()))
-                .status(request.getStatus() == null ? CourseSectionStatus.ACTIVE : request.getStatus())
-                .sectionOrder(request.getSectionOrder() == null ? 0 : request.getSectionOrder())
+                .title(request.getType().name())
+                .sectionOrder(request.getSectionOrder() == null
+                        ? (int) sectionRepository.countByChapterId(chapterId) + 1
+                        : request.getSectionOrder())
                 .build();
 
         CourseSection saved = sectionRepository.save(section);
@@ -234,13 +247,17 @@ public class CourseStructureServiceImpl implements CourseStructureService {
     })
     public CourseSectionDTO updateSection(Long sectionId, SectionRequest request) {
         CourseSection section = getSectionOrThrow(sectionId);
+        if (section.getType() != request.getType()
+                && sectionRepository.existsByChapterIdAndType(section.getChapter().getId(), request.getType())) {
+            throw new ApiException(
+                    ErrorCode.RESOURCE_ALREADY_EXISTS,
+                    "Section already exists for chapter " + section.getChapter().getId() + " and type " + request.getType()
+            );
+        }
 
         section.setType(request.getType());
-        section.setTitle(requiredText(request.getTitle()));
-        section.setLevel(normalizeText(request.getLevel()));
-        section.setTopic(normalizeText(request.getTopic()));
-        section.setStatus(request.getStatus() == null ? CourseSectionStatus.ACTIVE : request.getStatus());
-        section.setSectionOrder(request.getSectionOrder() == null ? 0 : request.getSectionOrder());
+        section.setTitle(request.getType().name());
+        section.setSectionOrder(request.getSectionOrder() == null ? section.getSectionOrder() : request.getSectionOrder());
 
         CourseSection saved = sectionRepository.save(section);
         Map<Long, List<CourseLessonDTO>> lessonsBySection = buildLessonsBySectionId(List.of(saved.getId()));
@@ -466,12 +483,25 @@ public class CourseStructureServiceImpl implements CourseStructureService {
                 .chapterId(section.getChapter().getId())
                 .type(section.getType())
                 .title(section.getTitle())
-                .level(section.getLevel())
-                .topic(section.getTopic())
-                .status(section.getStatus())
                 .sectionOrder(section.getSectionOrder())
                 .lessons(new ArrayList<>(lessons))
                 .build();
+    }
+
+    private List<CourseSection> createDefaultSections(CourseChapter chapter) {
+        List<CourseSection> sections = new ArrayList<>(DEFAULT_SECTION_TYPES.size());
+        for (int i = 0; i < DEFAULT_SECTION_TYPES.size(); i++) {
+            CourseSectionType type = DEFAULT_SECTION_TYPES.get(i);
+            sections.add(
+                    CourseSection.builder()
+                            .chapter(chapter)
+                            .type(type)
+                            .title(type.name())
+                            .sectionOrder(i + 1)
+                            .build()
+            );
+        }
+        return sectionRepository.saveAll(sections);
     }
 
     private CourseLessonDTO toLessonDTO(CourseLesson lesson) {

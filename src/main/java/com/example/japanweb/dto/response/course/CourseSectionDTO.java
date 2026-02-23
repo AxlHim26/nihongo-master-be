@@ -1,6 +1,5 @@
 package com.example.japanweb.dto.response.course;
 
-import com.example.japanweb.entity.CourseSectionStatus;
 import com.example.japanweb.entity.CourseSectionType;
 import lombok.Builder;
 import lombok.Data;
@@ -19,9 +18,6 @@ public class CourseSectionDTO implements Serializable {
     private Long chapterId;
     private CourseSectionType type;
     private String title;
-    private String level;
-    private String topic;
-    private CourseSectionStatus status;
     private Integer sectionOrder;
     private List<CourseLessonDTO> lessons;
 }
