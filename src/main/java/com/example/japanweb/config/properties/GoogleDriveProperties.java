@@ -9,6 +9,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app.integrations.google-drive")
 public class GoogleDriveProperties {
 
-    private String applicationName = "Japience";
+    private String applicationName = "MiraiGo";
     private String credentialsPath;
 }
