@@ -16,4 +16,8 @@ public interface CourseSectionRepository extends JpaRepository<CourseSection, Lo
     List<CourseSection> findByTypeOrderBySectionOrderAscIdAsc(CourseSectionType type);
 
     List<CourseSection> findByChapterIdInOrderByChapterIdAscSectionOrderAscIdAsc(Collection<Long> chapterIds);
+
+    boolean existsByChapterIdAndType(Long chapterId, CourseSectionType type);
+
+    long countByChapterId(Long chapterId);
 }

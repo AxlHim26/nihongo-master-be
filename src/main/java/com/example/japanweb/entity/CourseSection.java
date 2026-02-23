@@ -15,8 +15,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "course_sections", indexes = {
-        @Index(name = "idx_course_sections_chapter_type_order", columnList = "chapter_id, section_type, section_order"),
-        @Index(name = "idx_course_sections_type_level", columnList = "section_type, level")
+        @Index(name = "idx_course_sections_chapter_type_order", columnList = "chapter_id, section_type, section_order")
 })
 public class CourseSection {
 
@@ -36,17 +35,6 @@ public class CourseSection {
 
     @Column(nullable = false, length = 200)
     private String title;
-
-    @Column(length = 50)
-    private String level;
-
-    @Column(length = 200)
-    private String topic;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    @Builder.Default
-    private CourseSectionStatus status = CourseSectionStatus.ACTIVE;
 
     @Column(name = "section_order", nullable = false)
     @Builder.Default

@@ -1,6 +1,6 @@
 spring:
   application:
-    name: japience
+    name: miraigo
   profiles:
     default: dev
   jpa:
@@ -26,6 +26,17 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  compression:
+    enabled: true
+    min-response-size: 1024
+    mime-types:
+      - application/json
+      - application/xml
+      - text/html
+      - text/xml
+      - text/plain
+      - text/css
+      - application/javascript
 
 management:
   endpoints:
@@ -81,7 +92,7 @@ app:
       key: ${ADMIN_BOOTSTRAP_KEY:}
   integrations:
     google-drive:
-      application-name: ${GOOGLE_DRIVE_APPLICATION_NAME:Japience}
+      application-name: ${GOOGLE_DRIVE_APPLICATION_NAME:MiraiGo}
       credentials-path: ${GOOGLE_APPLICATION_CREDENTIALS:}
   observability:
     sql:
