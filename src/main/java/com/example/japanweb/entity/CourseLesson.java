@@ -27,6 +27,9 @@ public class CourseLesson {
     @EqualsAndHashCode.Exclude
     private CourseSection section;
 
+    @Column(name = "section_id", nullable = false, insertable = false, updatable = false)
+    private Long sectionId;
+
     @Column(nullable = false, length = 200)
     private String title;
 

@@ -44,7 +44,9 @@ public class CourseStructureServiceImpl implements CourseStructureService {
     private static final List<CourseSectionType> DEFAULT_SECTION_TYPES = List.of(
             CourseSectionType.GRAMMAR,
             CourseSectionType.VOCABULARY,
-            CourseSectionType.KANJI
+            CourseSectionType.KANJI,
+            CourseSectionType.READING,
+            CourseSectionType.LISTENING
     );
 
     private final CourseRepository courseRepository;
@@ -216,20 +218,11 @@ public class CourseStructureServiceImpl implements CourseStructureService {
     })
     public CourseSectionDTO createSection(Long chapterId, SectionRequest request) {
         CourseChapter chapter = getChapterOrThrow(chapterId);
-        if (sectionRepository.existsByChapterIdAndType(chapterId, request.getType())) {
-            throw new ApiException(
-                    ErrorCode.RESOURCE_ALREADY_EXISTS,
-                    "Section already exists for chapter " + chapterId + " and type " + request.getType()
-            );
-        }
-
         CourseSection section = CourseSection.builder()
                 .chapter(chapter)
                 .type(request.getType())
-                .title(request.getType().name())
-                .sectionOrder(request.getSectionOrder() == null
-                        ? (int) sectionRepository.countByChapterId(chapterId) + 1
-                        : request.getSectionOrder())
+                .title(request.getType().getVietnameseLabel())
+                .sectionOrder((int) sectionRepository.countByChapterId(chapterId) + 1)
                 .build();
 
         CourseSection saved = sectionRepository.save(section);
@@ -247,17 +240,9 @@ public class CourseStructureServiceImpl implements CourseStructureService {
     })
     public CourseSectionDTO updateSection(Long sectionId, SectionRequest request) {
         CourseSection section = getSectionOrThrow(sectionId);
-        if (section.getType() != request.getType()
-                && sectionRepository.existsByChapterIdAndType(section.getChapter().getId(), request.getType())) {
-            throw new ApiException(
-                    ErrorCode.RESOURCE_ALREADY_EXISTS,
-                    "Section already exists for chapter " + section.getChapter().getId() + " and type " + request.getType()
-            );
-        }
 
         section.setType(request.getType());
-        section.setTitle(request.getType().name());
-        section.setSectionOrder(request.getSectionOrder() == null ? section.getSectionOrder() : request.getSectionOrder());
+        section.setTitle(request.getType().getVietnameseLabel());
 
         CourseSection saved = sectionRepository.save(section);
         Map<Long, List<CourseLessonDTO>> lessonsBySection = buildLessonsBySectionId(List.of(saved.getId()));
@@ -403,7 +388,7 @@ public class CourseStructureServiceImpl implements CourseStructureService {
         Map<Long, List<CourseChapterDTO>> chaptersByCourse = new LinkedHashMap<>();
         for (CourseChapter chapter : chapters) {
             List<CourseSectionDTO> sections = sectionsByChapter.getOrDefault(chapter.getId(), List.of());
-            chaptersByCourse.computeIfAbsent(chapter.getCourse().getId(), ignored -> new ArrayList<>())
+            chaptersByCourse.computeIfAbsent(resolveCourseId(chapter), ignored -> new ArrayList<>())
                     .add(toChapterDTO(chapter, sections));
         }
         return chaptersByCourse;
@@ -428,7 +413,7 @@ public class CourseStructureServiceImpl implements CourseStructureService {
         Map<Long, List<CourseSectionDTO>> sectionsByChapter = new LinkedHashMap<>();
         for (CourseSection section : sections) {
             List<CourseLessonDTO> lessons = lessonsBySection.getOrDefault(section.getId(), List.of());
-            sectionsByChapter.computeIfAbsent(section.getChapter().getId(), ignored -> new ArrayList<>())
+            sectionsByChapter.computeIfAbsent(resolveChapterId(section), ignored -> new ArrayList<>())
                     .add(toSectionDTO(section, lessons));
         }
         return sectionsByChapter;
@@ -448,7 +433,7 @@ public class CourseStructureServiceImpl implements CourseStructureService {
 
         Map<Long, List<CourseLessonDTO>> lessonsBySection = new LinkedHashMap<>();
         for (CourseLesson lesson : lessons) {
-            lessonsBySection.computeIfAbsent(lesson.getSection().getId(), ignored -> new ArrayList<>())
+            lessonsBySection.computeIfAbsent(resolveSectionId(lesson), ignored -> new ArrayList<>())
                     .add(toLessonDTO(lesson));
         }
         return lessonsBySection;
@@ -469,7 +454,7 @@ public class CourseStructureServiceImpl implements CourseStructureService {
     private CourseChapterDTO toChapterDTO(CourseChapter chapter, List<CourseSectionDTO> sections) {
         return CourseChapterDTO.builder()
                 .id(chapter.getId())
-                .courseId(chapter.getCourse().getId())
+                .courseId(resolveCourseId(chapter))
                 .title(chapter.getTitle())
                 .description(chapter.getDescription())
                 .chapterOrder(chapter.getChapterOrder())
@@ -480,7 +465,7 @@ public class CourseStructureServiceImpl implements CourseStructureService {
     private CourseSectionDTO toSectionDTO(CourseSection section, List<CourseLessonDTO> lessons) {
         return CourseSectionDTO.builder()
                 .id(section.getId())
-                .chapterId(section.getChapter().getId())
+                .chapterId(resolveChapterId(section))
                 .type(section.getType())
                 .title(section.getTitle())
                 .sectionOrder(section.getSectionOrder())
@@ -496,7 +481,7 @@ public class CourseStructureServiceImpl implements CourseStructureService {
                     CourseSection.builder()
                             .chapter(chapter)
                             .type(type)
-                            .title(type.name())
+                            .title(type.getVietnameseLabel())
                             .sectionOrder(i + 1)
                             .build()
             );
@@ -507,12 +492,33 @@ public class CourseStructureServiceImpl implements CourseStructureService {
     private CourseLessonDTO toLessonDTO(CourseLesson lesson) {
         return CourseLessonDTO.builder()
                 .id(lesson.getId())
-                .sectionId(lesson.getSection().getId())
+                .sectionId(resolveSectionId(lesson))
                 .title(lesson.getTitle())
                 .videoUrl(lesson.getVideoUrl())
                 .pdfUrl(lesson.getPdfUrl())
                 .lessonOrder(lesson.getLessonOrder())
                 .build();
+    }
+
+    private Long resolveCourseId(CourseChapter chapter) {
+        if (chapter.getCourseId() != null) {
+            return chapter.getCourseId();
+        }
+        return chapter.getCourse().getId();
+    }
+
+    private Long resolveChapterId(CourseSection section) {
+        if (section.getChapterId() != null) {
+            return section.getChapterId();
+        }
+        return section.getChapter().getId();
+    }
+
+    private Long resolveSectionId(CourseLesson lesson) {
+        if (lesson.getSectionId() != null) {
+            return lesson.getSectionId();
+        }
+        return lesson.getSection().getId();
     }
 
     private String requiredText(String value) {
