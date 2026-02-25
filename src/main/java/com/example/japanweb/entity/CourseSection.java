@@ -29,6 +29,9 @@ public class CourseSection {
     @EqualsAndHashCode.Exclude
     private CourseChapter chapter;
 
+    @Column(name = "chapter_id", nullable = false, insertable = false, updatable = false)
+    private Long chapterId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "section_type", nullable = false, length = 20)
     private CourseSectionType type;

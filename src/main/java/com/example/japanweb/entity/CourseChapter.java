@@ -29,6 +29,9 @@ public class CourseChapter {
     @EqualsAndHashCode.Exclude
     private Course course;
 
+    @Column(name = "course_id", nullable = false, insertable = false, updatable = false)
+    private Long courseId;
+
     @Column(nullable = false, length = 200)
     private String title;
 

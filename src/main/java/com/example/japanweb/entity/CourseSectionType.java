@@ -6,5 +6,17 @@ package com.example.japanweb.entity;
 public enum CourseSectionType {
     VOCABULARY,
     GRAMMAR,
-    KANJI
+    KANJI,
+    READING,
+    LISTENING;
+
+    public String getVietnameseLabel() {
+        return switch (this) {
+            case VOCABULARY -> "Từ vựng";
+            case GRAMMAR -> "Ngữ pháp";
+            case KANJI -> "Hán Tự";
+            case READING -> "Đọc";
+            case LISTENING -> "Nghe";
+        };
+    }
 }
