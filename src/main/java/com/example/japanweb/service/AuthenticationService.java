@@ -1,7 +1,6 @@
 package com.example.japanweb.service;
 
 import com.example.japanweb.dto.request.auth.AuthRequest;
-import com.example.japanweb.dto.request.auth.RegisterAdminRequest;
 import com.example.japanweb.dto.request.auth.RegisterRequest;
 import com.example.japanweb.entity.User;
 import com.example.japanweb.exception.ApiException;
@@ -14,7 +13,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,30 +40,6 @@ public class AuthenticationService {
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(User.Role.USER)
-                .build();
-        repository.save(user);
-        return issueTokens(user);
-    }
-
-    public IssuedTokens registerAdmin(RegisterAdminRequest request, String bootstrapKey) {
-        if (!StringUtils.hasText(bootstrapKey)) {
-            throw new ApiException(ErrorCode.AUTH_ADMIN_REGISTRATION_DISABLED);
-        }
-        if (!bootstrapKey.equals(request.getBootstrapKey())) {
-            throw new ApiException(ErrorCode.AUTH_ADMIN_REGISTRATION_INVALID_KEY);
-        }
-        if (repository.existsByUsername(request.getUsername())) {
-            throw new ApiException(ErrorCode.AUTH_USERNAME_EXISTS);
-        }
-        if (repository.existsByEmail(request.getEmail())) {
-            throw new ApiException(ErrorCode.AUTH_EMAIL_EXISTS);
-        }
-
-        var user = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .role(User.Role.ADMIN)
                 .build();
         repository.save(user);
         return issueTokens(user);

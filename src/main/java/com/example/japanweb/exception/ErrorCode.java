@@ -56,11 +56,6 @@ public enum ErrorCode {
     SRS_INVALID_RATING("7001", HttpStatus.BAD_REQUEST, "Invalid SRS rating"),
     SRS_PROGRESS_NOT_FOUND("7002", HttpStatus.NOT_FOUND, "Learning progress not found"),
 
-    // Video Errors (8xxx)
-    VIDEO_NOT_FOUND("8001", HttpStatus.NOT_FOUND, "Video not found"),
-    VIDEO_STREAM_FAILED("8002", HttpStatus.BAD_GATEWAY, "Failed to stream video"),
-    VIDEO_INVALID_RANGE("8003", HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE, "Invalid Range header"),
-
     // System Errors (9xxx)
     INTERNAL_ERROR("9001", HttpStatus.INTERNAL_SERVER_ERROR, "An internal error occurred"),
     SERVICE_UNAVAILABLE("9002", HttpStatus.SERVICE_UNAVAILABLE, "Service is temporarily unavailable");
