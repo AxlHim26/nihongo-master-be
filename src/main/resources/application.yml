@@ -88,12 +88,10 @@ app:
         - Authorization
       allow-credentials: true
       max-age: 3600
-    admin-bootstrap:
-      key: ${ADMIN_BOOTSTRAP_KEY:}
-  integrations:
-    google-drive:
-      application-name: ${GOOGLE_DRIVE_APPLICATION_NAME:MiraiGo}
-      credentials-path: ${GOOGLE_APPLICATION_CREDENTIALS:}
+    admin-seed:
+      username: ${ADMIN_USERNAME:}
+      email: ${ADMIN_EMAIL:}
+      password: ${ADMIN_PASSWORD:}
   observability:
     sql:
       enabled: ${SQL_OBSERVABILITY_ENABLED:true}
